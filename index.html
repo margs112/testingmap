@@ -240,7 +240,7 @@
             font-weight: 600;
             font-size: 13px;
             cursor: pointer;
-            transition: background 0.2s;
+transition: background 0.2s;
             margin-top: 4px;
         }
         .nav-btn:hover { background-color: #004432; }
@@ -341,7 +341,7 @@
                     <div id="pin-b10" class="pin-dot blue-dot" style="top: 46.5%; left: 36.2%;" onclick="focusBuilding('b10', 36.2, 46.5, this)"></div>
                     <div id="pin-b11" class="pin-dot blue-dot" style="top: 41.5%; left: 41.2%;" onclick="focusBuilding('b11', 41.2, 41.5, this)"></div>
                     <div id="pin-b12" class="pin-dot blue-dot" style="top: 37.5%; left: 29.0%;" onclick="focusBuilding('b12', 29.0, 37.5, this)"></div>
-                    <div id="pin-b13" class="pin-dot blue-dot" style="top: 36.2%; left: 32.2%;" onclick="focusBuilding('b13', 32.2, 36.2, this)"></div>
+                    <div id="pin-b13" class="pin-dot blue-dot" style="top: 32.2%; left: 36.2%;" onclick="focusBuilding('b13', 36.2, 32.2, this)"></div>
                     <div id="pin-b14" class="pin-dot blue-dot" style="top: 29.5%; left: 39.5%;" onclick="focusBuilding('b14', 39.5, 29.5, this)"></div>
                    
                     <div id="pin-b16" class="pin-dot blue-dot" style="top: 21.8%; left: 63.8%;" onclick="focusBuilding('b16', 63.8, 21.8, this)"></div>
@@ -356,7 +356,7 @@
                     <div id="pin-b25" class="pin-dot blue-dot" style="top: 44.5%; left: 70.4%;" onclick="focusBuilding('b25', 70.4, 44.5, this)"></div>
                     <div id="pin-b26" class="pin-dot blue-dot" style="top: 40.5%; left: 72.8%;" onclick="focusBuilding('b26', 72.8, 40.5, this)"></div>
                     <div id="pin-b27" class="pin-dot blue-dot" style="top: 43.5%; left: 75.4%;" onclick="focusBuilding('b27', 75.4, 43.5, this)"></div>
-                    <div id="pin-b28" class="pin-dot blue-dot" style="top: 42.5%; left: 78.5%;" onclick="focusBuilding('b28', 78.5, 42.5, this)"></div>
+                    <div id="pin-b28" class="pin-dot blue-dot" style="top: 78.5%; left: 42.5%;" onclick="focusBuilding('b28', 42.5, 78.5, this)"></div>
                     <div id="pin-b29" class="pin-dot blue-dot" style="top: 45.4%; left: 81.2%;" onclick="focusBuilding('b29', 81.2, 45.4, this)"></div>
                     <div id="pin-b30" class="pin-dot blue-dot" style="top: 48.0%; left: 69.8%;" onclick="focusBuilding('b30', 69.8, 48.0, this)"></div>
                     <div id="pin-b31" class="pin-dot blue-dot" style="top: 52.8%; left: 78.5%;" onclick="focusBuilding('b31', 78.5, 52.8, this)"></div>
@@ -369,7 +369,7 @@
 
         <div class="info-sidebar">
             <div class="nav-widget">
-                <h4 style="font-family= 'Visby CF Heavy'; font-size: 35px;">tracker</h4>
+                <h4 style="font-family: 'Visby CF Heavy'; font-size: 35px;">tracker</h4>
                 
                 <div class="nav-field">
                     <label for="startLocation">sn k ngaun</label>
@@ -452,10 +452,10 @@
             b1: [23.4, 19.8], b2: [15.5, 32.2], b3: [17.5, 61.2], b4: [33.2, 69.8],
             b5: [37.8, 57.2], b6: [47.3, 51.5], b7: [28.5, 48.0], b8: [26.8, 52.8],
             b9: [31.6, 53.6], b10: [36.2, 46.5], b11: [41.2, 41.5], b12: [29.0, 37.5],
-            b13: [32.2, 36.2], b14: [39.5, 29.5], b16: [63.8, 21.8],
+            b13: [36.2, 32.2], b14: [39.5, 29.5], b16: [63.8, 21.8],
             b17: [59.0, 31.5], b18: [49.3, 34.0], b19: [69.5, 33.2], b20: [73.0, 31.2],
             b21: [75.8, 24.5], b22: [83.2, 24.5], b23: [87.2, 31.5], b24: [67.5, 41.2],
-            b25: [70.4, 44.5], b26: [72.8, 40.5], b27: [75.4, 43.5], b28: [78.5, 42.5],
+            b25: [70.4, 44.5], b26: [72.8, 40.5], b27: [75.4, 43.5], b28: [42.5, 78.5],
             b29: [81.2, 45.4], b30: [69.8, 48.0], b31: [78.5, 52.8], b32: [81.2, 61.2],
             b33: [83.0, 49.5]
         };
@@ -520,8 +520,10 @@
         let isGpsOverridden = false;
 
         const CAMPUS_GEO_BOUNDS = {
-            top: 13.945800, bottom: 13.940500,
-            left: 121.141500, right: 121.147800
+            top: 13.946900,    // Northernmost boundary coordinate
+            bottom: 13.941100, // Southernmost boundary coordinate
+            left: 121.140200,  // Westernmost boundary coordinate
+            right: 121.146600  // Easternmost boundary coordinate
         };
 
         if (navigator.geolocation) {
@@ -629,7 +631,9 @@
             visualPath.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
 
             const distancePercent = Math.sqrt(Math.pow(destNode.pctX - userCurrentPos.pctX, 2) + Math.pow(destNode.pctY - userCurrentPos.pctY, 2));
-            const approximateMeters = Math.round(distancePercent * 3.5);
+            
+            // Calibrated to 6.1 so the straight line between CBEAM and Brother Benilde results in ~416 meters.
+            const approximateMeters = Math.round(distancePercent * 6.1);
 
             const textEl = document.getElementById('liveDistanceText');
             if (approximateMeters <= 5) {
