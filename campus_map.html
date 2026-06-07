@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Campus Map & Live Route Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+    <style>
+@font-face {
+            font-family: 'Visby CF Heavy';
+            src: url('fonts/fsp-demo-visby-cf-heavy-regular.otf') format('opentype');
+        }
+@font-face {
+            font-family: 'Livvic';
+            src: url('Livvic-Regular.otf') format('truetype');
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            font-family: 'Livvic';
+            background-color: #111;
+            color: #333;
+            overflow: hidden;
+        }
+
+        /* Container Layout */
+        .map-interface {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Left Side: Map Viewport */
+        .map-viewport {
+            flex: 2;
+            position: relative;
+            background-color: #bcdbe5; 
+            overflow: hidden; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The Moving/Zooming Canvas Container */
+        .map-canvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            transform-origin: 0 0; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .map-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .campus-image {
+            display: block;
+            max-width: 100vw;
+            max-height: 100vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        /* Responsive SVG Path Drawing Overlay Layer */
+        .map-svg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 5;
+        }
+
+        /* Animated Dashed Route Path Vector Style */
+        .route-line {
+            stroke: #ffd700; 
+            stroke-width: 5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 8, 8;
+            animation: routeDashFlow 2s linear infinite;
+        }
+
+        @keyframes routeDashFlow {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        /* Control UI Overlay Panel */
+        .controls-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 40;
+        }
+
+        .reset-btn {
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .reset-btn:hover { background: rgba(0, 0, 0, 0.9); }
+        .reset-btn.danger { background: rgba(180, 40, 40, 0.85); }
+        .reset-btn.danger:hover { background: rgb(150, 20, 20); }
+
+        /* Interactive Map Pins */
+        .pin-dot {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2.5px solid #ffffff;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            transition: transform 0.2s ease, background-color 0.2s;
+            z-index: 10;
+        }
+        .pin-dot:hover {
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+        .pin-dot.active {
+            transform: translate(-50%, -50%) scale(1.4);
+            border-color: #ffd700;
+            box-shadow: 0 0 0 5px rgba(255, 215, 0, 0.4);
+        }
+
+        /* Live User Location Pulse Indicator Dot */
+        .user-live-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: #007aff;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(0, 122, 255, 0.8);
+            z-index: 30;
+            pointer-events: none;
+        }
+        .user-live-dot::after {
+            content: '';
+            position: absolute;
+            top: -3px; left: -3px; width: 16px; height: 16px;
+            border-radius: 50%;
+            border: 3px solid rgba(0, 122, 255, 0.5);
+            animation: pulseCircle 1.8s infinite ease-out;
+        }
+        @keyframes pulseCircle {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        /* Grouped pin colors */
+        .blue-dot { background-color: #1e558c; }
+        .green-dot { background-color: #005a43; }
+        .red-dot { background-color: #b42828; }
+
+        /* Right Side: Information Sidebar */
+        .info-sidebar {
+            flex: 1;
+            min-width: 380px;
+            max-width: 450px;
+            background-color: #ffffff;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 50;
+            padding: 20px;
+        }
+
+        /* Navigator Widget Styling */
+        .nav-widget {
+            background-color: #f4f7f5;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8e3;
+        }
+        .nav-widget h4 {
+            color: #005a43;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .nav-field {
+            margin-bottom: 10px;
+        }
+        .nav-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .nav-field select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            font-size: 13px;
+            outline: none;
+        }
+        .nav-btn {
+            width: 100%;
+            background-color: #005a43;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 4px;
+        }
+        .nav-btn:hover { background-color: #004432; }
+
+        /* Directions Steps Output Panel */
+        .directions-panel {
+            background-color: #fff;
+            border-left: 4px solid #1e558c;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-radius: 0 6px 6px 0;
+        }
+        .directions-panel h5 {
+            font-size: 13px;
+            color: #111;
+            margin-bottom: 8px;
+        }
+        .directions-list {
+            padding-left: 18px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        .placeholder-state {
+            padding: 40px 20px;
+            text-align: center;
+            margin: auto 0;
+            color: #777;
+        }
+        .placeholder-state h3 { color: #2c3e2b; margin-bottom: 8px; }
+
+        .sidebar-content { display: flex; flex-direction: column; }
+        .building-header-image { width: 100%; height: 180px; background-color: #ddd; border-radius: 6px; overflow: hidden; }
+        .building-header-image img { width: 100%; height: 100%; object-fit: cover; }
+        .details-body { padding: 16px 0; }
+
+        .tag {
+            display: inline-block;
+            background-color: #1e558c;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .building-title { font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #111; }
+        .section-heading { font-size: 12px; text-transform: uppercase; color: #666; font-weight: 600; margin-top: 16px; margin-bottom: 6px; }
+        .building-about { font-size: 14px; line-height: 1.6; color: #444; }
+        
+        .department-list { list-style: none; padding: 0; margin-top: 5px; }
+        .department-list li { font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 900px) {
+            .map-interface { flex-direction: column; }
+            .info-sidebar { max-width: 100%; min-width: 100%; flex: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="map-interface">
+        
+        <div class="map-viewport" id="viewport">
+            
+            <div class="controls-overlay">
+                <button class="reset-btn hidden" id="resetBtn" onclick="resetView()">
+                    🔍 Zoom Out Entire Map
+                </button>
+            </div>
+
+            <div class="map-canvas" id="mapCanvas">
+                <div class="map-wrapper" id="mapWrapper">
+                    
+                    <img src="map.png" alt="Campus Map" class="campus-image" id="campusImg">
+                    
+                    <svg class="map-svg-overlay" id="routeSvg">
+                        <path id="visualPath" class="route-line" d="" fill="none"/>
+                    </svg>
+                    
+                    <div id="userLocationDot" class="user-live-dot" style="top: 57.2%; left: 37.8%;"></div>
+                    
+                    <div id="pin-b1" class="pin-dot blue-dot" style="top: 19.8%; left: 23.4%;" onclick="focusBuilding('b1', 23.4, 19.8, this)"></div>
+                    <div id="pin-b2" class="pin-dot blue-dot" style="top: 32.2%; left: 15.5%;" onclick="focusBuilding('b2', 15.5, 32.2, this)"></div>
+                    <div id="pin-b3" class="pin-dot blue-dot" style="top: 61.2%; left: 17.5%;" onclick="focusBuilding('b3', 17.5, 61.2, this)"></div>
+                    <div id="pin-b4" class="pin-dot blue-dot" style="top: 69.8%; left: 33.2%;" onclick="focusBuilding('b4', 33.2, 69.8, this)"></div>
+                    <div id="pin-b5" class="pin-dot blue-dot" style="top: 57.2%; left: 37.8%;" onclick="focusBuilding('b5', 37.8, 57.2, this)"></div>
+                    <div id="pin-b6" class="pin-dot blue-dot" style="top: 51.5%; left: 47.3%;" onclick="focusBuilding('b6', 47.3, 51.5, this)"></div>
+                    <div id="pin-b7" class="pin-dot blue-dot" style="top: 48.0%; left: 28.5%;" onclick="focusBuilding('b7', 28.5, 48.0, this)"></div>
+                    <div id="pin-b8" class="pin-dot blue-dot" style="top: 52.8%; left: 26.8%;" onclick="focusBuilding('b8', 26.8, 52.8, this)"></div>
+                    <div id="pin-b9" class="pin-dot blue-dot" style="top: 53.6%; left: 31.6%;" onclick="focusBuilding('b9', 31.6, 53.6, this)"></div>
+                    <div id="pin-b10" class="pin-dot blue-dot" style="top: 46.5%; left: 36.2%;" onclick="focusBuilding('b10', 36.2, 46.5, this)"></div>
+                    <div id="pin-b11" class="pin-dot blue-dot" style="top: 41.5%; left: 41.2%;" onclick="focusBuilding('b11', 41.2, 41.5, this)"></div>
+                    <div id="pin-b12" class="pin-dot blue-dot" style="top: 37.5%; left: 29.0%;" onclick="focusBuilding('b12', 29.0, 37.5, this)"></div>
+                    <div id="pin-b13" class="pin-dot blue-dot" style="top: 36.2%; left: 32.2%;" onclick="focusBuilding('b13', 32.2, 36.2, this)"></div>
+                    <div id="pin-b14" class="pin-dot blue-dot" style="top: 29.5%; left: 39.5%;" onclick="focusBuilding('b14', 39.5, 29.5, this)"></div>
+                   
+                    <div id="pin-b16" class="pin-dot blue-dot" style="top: 21.8%; left: 63.8%;" onclick="focusBuilding('b16', 63.8, 21.8, this)"></div>
+                    <div id="pin-b17" class="pin-dot blue-dot" style="top: 31.5%; left: 59.0%;" onclick="focusBuilding('b17', 59.0, 31.5, this)"></div>
+                    <div id="pin-b18" class="pin-dot blue-dot" style="top: 34.0%; left: 49.3%;" onclick="focusBuilding('b18', 49.3, 34.0, this)"></div>
+                    <div id="pin-b19" class="pin-dot blue-dot" style="top: 33.2%; left: 69.5%;" onclick="focusBuilding('b19', 69.5, 33.2, this)"></div>
+                    <div id="pin-b20" class="pin-dot blue-dot" style="top: 31.2%; left: 73.0%;" onclick="focusBuilding('b20', 73.0, 31.2, this)"></div>
+                    <div id="pin-b21" class="pin-dot blue-dot" style="top: 24.5%; left: 75.8%;" onclick="focusBuilding('b21', 75.8, 24.5, this)"></div>
+                    <div id="pin-b22" class="pin-dot blue-dot" style="top: 24.5%; left: 83.2%;" onclick="focusBuilding('b22', 83.2, 24.5, this)"></div>
+                    <div id="pin-b23" class="pin-dot blue-dot" style="top: 31.5%; left: 87.2%;" onclick="focusBuilding('b23', 87.2, 31.5, this)"></div>
+                    <div id="pin-b24" class="pin-dot blue-dot" style="top: 41.2%; left: 67.5%;" onclick="focusBuilding('b24', 67.5, 41.2, this)"></div>
+                    <div id="pin-b25" class="pin-dot blue-dot" style="top: 44.5%; left: 70.4%;" onclick="focusBuilding('b25', 70.4, 44.5, this)"></div>
+                    <div id="pin-b26" class="pin-dot blue-dot" style="top: 40.5%; left: 72.8%;" onclick="focusBuilding('b26', 72.8, 40.5, this)"></div>
+                    <div id="pin-b27" class="pin-dot blue-dot" style="top: 43.5%; left: 75.4%;" onclick="focusBuilding('b27', 75.4, 43.5, this)"></div>
+                    <div id="pin-b28" class="pin-dot blue-dot" style="top: 42.5%; left: 78.5%;" onclick="focusBuilding('b28', 78.5, 42.5, this)"></div>
+                    <div id="pin-b29" class="pin-dot blue-dot" style="top: 45.4%; left: 81.2%;" onclick="focusBuilding('b29', 81.2, 45.4, this)"></div>
+                    <div id="pin-b30" class="pin-dot blue-dot" style="top: 48.0%; left: 69.8%;" onclick="focusBuilding('b30', 69.8, 48.0, this)"></div>
+                    <div id="pin-b31" class="pin-dot blue-dot" style="top: 52.8%; left: 78.5%;" onclick="focusBuilding('b31', 78.5, 52.8, this)"></div>
+                    <div id="pin-b32" class="pin-dot blue-dot" style="top: 61.2%; left: 81.2%;" onclick="focusBuilding('b32', 81.2, 61.2, this)"></div>
+                    <div id="pin-b33" class="pin-dot blue-dot" style="top: 49.5%; left: 83.0%;" onclick="focusBuilding('b33', 83.0, 49.5, this)"></div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <div class="info-sidebar">
+            <div class="nav-widget">
+                <h4 style="font-family= 'Visby CF Heavy'; font-size: 35px;">tracker</h4>
+                
+                <div class="nav-field">
+                    <label for="startLocation">sn k ngaun</label>
+                    <select id="startLocation" onchange="handleStartLocationChange()">
+                        <option value="gps" selected>gps tol</option>
+                    </select>
+                </div>
+
+                <div class="nav-field">
+                    <label for="endLocation">san k punta sis?</label>
+                    <select id="endLocation" onchange="engageLiveTracking()">
+                        <option value="" disabled selected>ano destination m</option>
+                    </select>
+                </div>
+                <button class="nav-btn" onclick="engageLiveTracking()">ano tara</button>
+            </div>
+
+            <div id="directionsCard" class="directions-panel hidden">
+                <h5 id="liveDistanceText">Distance: Selecting target...</h5>
+                <ul class="directions-list" style="list-style: none; padding: 0;">
+                    <li style="margin-top: 5px; color: #666; font-size: 11px;">The line updates automatically as your phone's GPS position moves on campus walkways.</li>
+                </ul>
+            </div>
+
+            <div id="sidebar-placeholder" class="placeholder-state">
+                <h3>click k lg te</h3>
+                <p>pindot ka ng bilog o kaya pili k ng bldg n ppuntahan m </p>
+            </div>
+
+            <div id="sidebar-content" class="sidebar-content hidden">
+                <div class="building-header-image">
+                    <img id="building-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100%' height='100%' fill='%23607d8b'/></svg>" alt="Building Image">
+                </div>
+                <div class="details-body">
+                    <span id="building-tag" class="tag">Academic Zone</span>
+                    <h2 id="building-name" class="building-title">Building Name</h2>
+                    <div class="section-heading">About</div>
+                    <p id="building-about" class="building-about"></p>
+                    <div class="section-heading">Departments</div>
+                    <ul id="building-departments" class="department-list"></ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. ORIGINAL BUILDING CONFIGURATION DICTIONARY
+        // ==========================================
+        const buildingNamesConfig = {
+            b1: "Retreat Complex", b2: "Sports Complex", b3: "CBEAM", b4: "1ST GATE",
+            b5: "MB", b6: "Chez", b7: "JRF", b8: "SC", b9: "JRN", b10: "gzebo",
+            b11: "Diokno", b12: "ictc", b13: "sorry", b14: "Miguel Malvar",
+            b16: "Oval", b17: "Capilla De San Juan Bautista De La Salle", b18: "Sentrum",
+            b19: "Centen A", b20: "Centen B", b21: "Jaime Hilario (JH)", b22: "Brother Benilde (BB)",
+            b23: "idk", b24: "idk", b25: "idk", b26: "St. Brother Miguel Hall", b27: "idk",
+            b28: "idk", b29: "idk", b30: "Claro M. Recto (CMR)", b31: "idk", b32: "College Lobby",
+            b33: "idk"
+        };
+
+        // ==========================================
+        // 2. DYNAMIC ENGINE HYDRATION & INITIALIZATION
+        // ==========================================
+        const campusDatabase = {};
+        for (let i = 1; i <= 33; i++) {
+            const bId = `b${i}`;
+            if (i === 15) continue;
+
+            campusDatabase[bId] = {
+                pctX: 0, pctY: 0, pinId: `pin-${bId}`,
+                name: buildingNamesConfig[bId], 
+                tag: "dlsl",
+                about: "qng gus2 nyo lg piru wag n eme",
+                departments: ["qng gus2 nyo lg piru wag n eme"]
+            };
+        }
+
+        const coordinates = {
+            b1: [23.4, 19.8], b2: [15.5, 32.2], b3: [17.5, 61.2], b4: [33.2, 69.8],
+            b5: [37.8, 57.2], b6: [47.3, 51.5], b7: [28.5, 48.0], b8: [26.8, 52.8],
+            b9: [31.6, 53.6], b10: [36.2, 46.5], b11: [41.2, 41.5], b12: [29.0, 37.5],
+            b13: [32.2, 36.2], b14: [39.5, 29.5], b16: [63.8, 21.8],
+            b17: [59.0, 31.5], b18: [49.3, 34.0], b19: [69.5, 33.2], b20: [73.0, 31.2],
+            b21: [75.8, 24.5], b22: [83.2, 24.5], b23: [87.2, 31.5], b24: [67.5, 41.2],
+            b25: [70.4, 44.5], b26: [72.8, 40.5], b27: [75.4, 43.5], b28: [78.5, 42.5],
+            b29: [81.2, 45.4], b30: [69.8, 48.0], b31: [78.5, 52.8], b32: [81.2, 61.2],
+            b33: [83.0, 49.5]
+        };
+
+        for (const [key, coords] of Object.entries(coordinates)) {
+            if (campusDatabase[key]) {
+                campusDatabase[key].pctX = coords[0];
+                campusDatabase[key].pctY = coords[1];
+            }
+        }
+
+        campusDatabase.b5.tag = "Administrative";
+        campusDatabase.b5.about = "The Administration Building serves as the operational nerve center of De La Salle Lipa. It houses the offices of the President, Vice Chancellors, and key administrative departments responsible for the university's governance and strategic direction.";
+        campusDatabase.b5.departments = ["Office of the President", "Office of the Vice Chancellor for Academics", "Human Resources"];
+
+        // ==========================================
+        // 3. GENERATE THE DROPDOWN LISTS AUTOMATICALLY
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            const startSelect = document.getElementById('startLocation');
+            const endSelect = document.getElementById('endLocation');
+            
+            if (endSelect && startSelect) {
+                endSelect.innerHTML = '<option value="" disabled selected>anu destination m</option>';
+                
+                for (let i = 1; i <= 33; i++) {
+                    if (i === 15) continue;
+                    const key = `b${i}`;
+                    if (campusDatabase[key]) {
+                        const name = campusDatabase[key].name;
+                        
+                        // Populate End Location Dropdown
+                        const optionEnd = document.createElement('option');
+                        optionEnd.value = key;
+                        optionEnd.textContent = name;
+                        endSelect.appendChild(optionEnd);
+
+                        // Populate Start Location Dropdown
+                        const optionStart = document.createElement('option');
+                        optionStart.value = key;
+                        optionStart.textContent = name;
+                        startSelect.appendChild(optionStart);
+                    }
+                }
+            }
+        });
+
+        // ==========================================
+        // 4. MAP VIEWPORT INTERACTIVE ENGINE
+        // ==========================================
+        const canvas = document.getElementById('mapCanvas');
+        const viewport = document.getElementById('viewport');
+        const campusImg = document.getElementById('campusImg');
+        const visualPath = document.getElementById('visualPath');
+        const resetBtn = document.getElementById('resetBtn');
+        const userDot = document.getElementById('userLocationDot');
+
+        let userCurrentPos = { pctX: 37.8, pctY: 57.2 }; // Defaults near Admin (B5)
+        let currentEndKey = null;
+        let isTrackingMode = false;
+        let currentZoomedBuildingKey = null;
+        let isGpsOverridden = false;
+
+        const CAMPUS_GEO_BOUNDS = {
+            top: 13.945800, bottom: 13.940500,
+            left: 121.141500, right: 121.147800
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateHardwarePosition, handleGpsError, {
+                enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+            });
+        }
+
+        function updateHardwarePosition(position) {
+            if (isGpsOverridden) return; // Ignore actual GPS tracking completely if manual location is set
+
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+
+            if (userLat <= CAMPUS_GEO_BOUNDS.top && userLat >= CAMPUS_GEO_BOUNDS.bottom &&
+                userLng >= CAMPUS_GEO_BOUNDS.left && userLng <= CAMPUS_GEO_BOUNDS.right) {
+                
+                const totalLatSpan = CAMPUS_GEO_BOUNDS.top - CAMPUS_GEO_BOUNDS.bottom;
+                const totalLngSpan = CAMPUS_GEO_BOUNDS.right - CAMPUS_GEO_BOUNDS.left;
+
+                userCurrentPos.pctX = ((userLng - CAMPUS_GEO_BOUNDS.left) / totalLngSpan) * 100;
+                userCurrentPos.pctY = ((CAMPUS_GEO_BOUNDS.top - userLat) / totalLatSpan) * 100;
+
+                userDot.style.left = `${userCurrentPos.pctX}%`;
+                userDot.style.top = `${userCurrentPos.pctY}%`;
+
+                if (isTrackingMode && currentEndKey) {
+                    drawStraightTrackerLine();
+                }
+            }
+        }
+
+        function handleGpsError(err) {
+            console.warn("GPS tracking hardware issue or permissions denied.");
+        }
+
+        // Handle structural switch between GPS and custom building anchor
+        function handleStartLocationChange() {
+            const startVal = document.getElementById('startLocation').value;
+            
+            if (startVal === "gps") {
+                isGpsOverridden = false;
+                // Re-enable pulse aesthetic animation lines
+                userDot.style.backgroundColor = "#007aff";
+                userDot.style.boxShadow = "0 0 10px rgba(0, 122, 255, 0.8)";
+            } else {
+                isGpsOverridden = true;
+                const selectedBuilding = campusDatabase[startVal];
+                if (selectedBuilding) {
+                    userCurrentPos.pctX = selectedBuilding.pctX;
+                    userCurrentPos.pctY = selectedBuilding.pctY;
+                    
+                    userDot.style.left = `${userCurrentPos.pctX}%`;
+                    userDot.style.top = `${userCurrentPos.pctY}%`;
+                    
+                    // Turn gray when in safe non-GPS custom anchor configuration mode
+                    userDot.style.backgroundColor = "#555555";
+                    userDot.style.boxShadow = "0 0 8px rgba(0,0,0,0.5)";
+                }
+            }
+
+            if (isTrackingMode && currentEndKey) {
+                drawStraightTrackerLine();
+            }
+        }
+
+        function engageLiveTracking() {
+            const end = document.getElementById('endLocation').value;
+            if (!end) return;
+
+            currentEndKey = end;
+            isTrackingMode = true;
+            currentZoomedBuildingKey = null;
+
+            document.querySelectorAll('.pin-dot').forEach(p => p.classList.remove('active'));
+            const destinationNode = campusDatabase[end];
+            if (destinationNode) {
+                const nodeEl = document.getElementById(destinationNode.pinId);
+                if (nodeEl) nodeEl.classList.add('active');
+            }
+
+            document.getElementById('directionsCard').classList.remove('hidden');
+            
+            drawStraightTrackerLine();
+
+            resetBtn.innerText = "❌ Clear Route Path";
+            resetBtn.className = "reset-btn danger";
+            resetBtn.classList.remove('hidden');
+
+            if (destinationNode) populateSidebarDetails(destinationNode);
+        }
+
+        function drawStraightTrackerLine() {
+            if (!isTrackingMode || !currentEndKey) return;
+
+            const destNode = campusDatabase[currentEndKey];
+            const mapWidth = campusImg.clientWidth;
+            const mapHeight = campusImg.clientHeight;
+
+            const x1 = (userCurrentPos.pctX / 100) * mapWidth;
+            const y1 = (userCurrentPos.pctY / 100) * mapHeight;
+            const x2 = (destNode.pctX / 100) * mapWidth;
+            const y2 = (destNode.pctY / 100) * mapHeight;
+
+            visualPath.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+
+            const distancePercent = Math.sqrt(Math.pow(destNode.pctX - userCurrentPos.pctX, 2) + Math.pow(destNode.pctY - userCurrentPos.pctY, 2));
+            const approximateMeters = Math.round(distancePercent * 3.5);
+
+            const textEl = document.getElementById('liveDistanceText');
+            if (approximateMeters <= 5) {
+                textEl.innerHTML = "🎉 <strong>Arrival state reached!</strong> Selected targets aligned.";
+            } else {
+                textEl.innerHTML = "🚶 Walk Distance: <strong>" + approximateMeters + " meters</strong>";
+            }
+        }
+
+        function focusBuilding(key, pctX, pctY, dotElement) {
+            if (currentZoomedBuildingKey === key) {
+                resetView();
+                return;
+            }
+
+            const data = campusDatabase[key];
+            if (!data) return;
+
+            currentZoomedBuildingKey = key;
+
+            document.querySelectorAll('.pin-dot').forEach(p => p.classList.remove('active'));
+            if (dotElement) dotElement.classList.add('active');
+
+            const zoomLevel = 2.8; 
+            const wrapperWidth = campusImg.clientWidth;
+            const wrapperHeight = campusImg.clientHeight;
+            const viewportRect = viewport.getBoundingClientRect();
+
+            const targetX = (pctX / 100) * wrapperWidth;
+            const targetY = (pctY / 100) * wrapperHeight;
+
+            const panX = (viewportRect.width / 2) - (targetX * zoomLevel);
+            const panY = (viewportRect.height / 2) - (targetY * zoomLevel);
+
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+            
+            resetBtn.innerText = "🔍 Zoom Out Entire Map";
+            resetBtn.className = "reset-btn";
+            resetBtn.classList.remove('hidden');
+
+            populateSidebarDetails(data);
+        }
+
+        function syncDropdownToPin(key) {
+            const selectEl = document.getElementById('endLocation');
+            if (selectEl) {
+                selectEl.value = key;
+            }
+        }
+
+        function populateSidebarDetails(data) {
+            document.getElementById('sidebar-placeholder').classList.add('hidden');
+            document.getElementById('sidebar-content').classList.remove('hidden');
+            
+            document.getElementById('building-name').innerText = data.name;
+            document.getElementById('building-about').innerText = data.about;
+            
+            const tag = document.getElementById('building-tag');
+            tag.innerText = data.tag;
+
+            const list = document.getElementById('building-departments');
+            list.innerHTML = '';
+            data.departments.forEach(d => {
+                const li = document.createElement('li');
+                li.innerText = d;
+                list.appendChild(li);
+            });
+
+            syncDropdownToPin(data.pinId.replace('pin-', ''));
+        }
+
+        function resetView() {
+            canvas.style.transform = "translate(0px, 0px) scale(1)"; 
+            isTrackingMode = false;
+            currentEndKey = null;
+            visualPath.setAttribute('d', ''); 
+            document.getElementById('directionsCard').classList.add('hidden');
+            currentZoomedBuildingKey = null; 
+            resetBtn.classList.add('hidden');
+            document.querySelectorAll('.pin-dot').forEach(p => p.classList.remove('active'));
+            document.getElementById('sidebar-placeholder').classList.remove('hidden');
+            document.getElementById('sidebar-content').classList.add('hidden');
+            document.getElementById('endLocation').value = ""; 
+            document.getElementById('startLocation').value = "gps";
+            handleStartLocationChange();
+        }
+
+        window.addEventListener('resize', drawStraightTrackerLine);
+    </script>
+</body>
+</html>
