@@ -9,7 +9,7 @@
     <style>
         @font-face {
             font-family: 'Visby CF Heavy';
-            src: url('fonts/fsp-demo-visby-cf-heavy-regular.otf') format('opentype');
+            src: url('fsp-demo-visby-cf-heavy-regular.otf') format('opentype');
         }
         @font-face {
             font-family: 'Livvic';
@@ -392,68 +392,33 @@
 
         .hidden { display: none !important; }
 
-        /* Mobile Layout Styling Constraints */
+        /* Mobile Layout Adjustments */
         @media (max-width: 900px) {
             .map-interface { 
-                flex-direction: column;
-                position: relative;
-                height: 100vh;
-                width: 100vw;
+                flex-direction: column; 
             }
             .map-viewport {
                 flex: none;
                 width: 100%;
-                height: 100% !important; /* Forces layout map frame to take absolute full container height */
-                position: absolute;
-                top: 0;
-                left: 0;
-                z-index: 1;
-            }
-
-            .map-canvas {
-                width: 100% !important;
-                height: 100% !important;
-            }
-            .map-wrapper {
-                width: 100%;
-                height: 100%;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-            .campus-image {
-                width: 100% !important;
-                height: 100% !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                object-fit: contain !important;
+                height: 42vh; /* Lowered viewport height to align with map bounds */
             }
             
             .info-sidebar { 
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                max-width: 100%;
-                min-width: 100%; 
-                height: 320px; /* Default starting position lower on screen */
-                flex: none;
-                border-radius: 24px 24px 0 0;
-                box-shadow: 0 -10px 32px rgba(0,0,0,0.25);
-                padding: 0 16px 16px 16px;
-                z-index: 50;
-                background-color: #ffffff;
-                /* Clean performance rendering updates for dragging interactions */
-                transition: height 0.1s ease-out; 
-                touch-action: none; /* Prevents background viewport scrolling bugs */
-            }
-
-            /* State class rotations */
-            .info-sidebar.expanded .bottom-sheet-arrow {
-                transform: rotate(180deg);
+                width: 100%; 
+                max-width: 100%; 
+                min-width: 100%;
+                height: 58vh; /* Shipped higher to cleanly meet the bottom of the map image */
+                box-shadow: 0 -10px 25px rgba(0,0,0,0.1); 
+                border-radius: 20px 20px 0 0; 
+                padding: 18px;
             }
 
             .bottom-sheet-handle {
                 display: block;
+            }
+
+            .info-sidebar.expanded {
+                height: 85vh;
             }
 
             .nav-widget {
@@ -476,17 +441,6 @@
                 padding: 10px;
                 font-size: 13px;
             }
-
-            .controls-overlay {
-                bottom: calc(var(--sheet-height, 320px) + 20px);
-                left: 15px;
-                transition: bottom 0.1s ease-out;
-            }
-
-            .reset-btn {
-                padding: 8px 14px;
-                font-size: 12px;
-            }
             .placeholder-state {
                 padding: 15px 10px;
             }
@@ -499,7 +453,7 @@
         
         <div class="map-viewport" id="viewport">
             
-            <div class="controls-overlay" id="controlsOverlay">
+            <div class="controls-overlay">
                 <button class="reset-btn hidden" id="resetBtn" onclick="resetView()">
                     🔍 Zoom Out Entire Map
                 </button>
@@ -513,7 +467,7 @@
                     <svg class="map-svg-overlay" id="routeSvg">
                         <path id="visualPath" class="route-line" d="" fill="none"/>
                     </svg>
- 
+
                     <div id="userLocationDot" class="user-live-dot" style="top: 57.2%; left: 37.8%;">
                         <div class="user-avatar-frame">
                             <img src="https://inviteme.com.au/cdn/shop/files/img_work_products_01_1200x1200.png?v=1744342444" alt="Student Position Indicator">
@@ -523,7 +477,7 @@
                     <div id="destinationStar" class="destination-star-pin hidden">
                         <img src="https://static.vecteezy.com/system/resources/thumbnails/073/274/811/small/green-map-pin-location-marker-navigation-symbol-isolated-on-transparent-background-3d-illustration-modern-design-useful-for-travel-direction-and-gps-concepts-png.png" alt="Destination Target Star">
                     </div>
-  
+
                     <div id="pin-b1" class="pin-dot blue-dot" style="top: 19.8%; left: 23.4%;" onclick="focusBuilding('b1', 23.4, 19.8, this)"></div>
                     <div id="pin-b2" class="pin-dot blue-dot" style="top: 32.2%; left: 15.5%;" onclick="focusBuilding('b2', 15.5, 32.2, this)"></div>
                     <div id="pin-b3" class="pin-dot blue-dot" style="top: 61.2%; left: 17.5%;" onclick="focusBuilding('b3', 17.5, 61.2, this)"></div>
@@ -562,7 +516,7 @@
         </div>
 
         <div class="info-sidebar" id="infoSidebar">
-            <div class="bottom-sheet-handle" id="sheetHandle">
+            <div class="bottom-sheet-handle" onclick="toggleMobileSidebar()">
                 <div class="bottom-sheet-bar"></div>
                 <div class="bottom-sheet-arrow"></div>
             </div>
@@ -693,7 +647,6 @@
                 }
             }
             applyTransform();
-            setupMobileDragHandle();
         });
 
         const canvas = document.getElementById('mapCanvas');
@@ -718,12 +671,6 @@
         let initialPinchDistance = 0;
         let initialPinchZoom = 1;
 
-        // Mobile Drag Sheet variables
-        let isDraggingSheet = false;
-        let sheetStartHeight = 320;
-        let sheetCurrentHeight = 320;
-        let dragStartY = 0;
-
         viewport.addEventListener('mousedown', startDrag);
         viewport.addEventListener('mousemove', dragMove);
         window.addEventListener('mouseup', endDrag);
@@ -733,63 +680,10 @@
         window.addEventListener('touchend', endDrag);
         viewport.addEventListener('wheel', mouseWheelZoomHandler, { passive: false });
 
-        function updateSheetHeight(height) {
-            sheetCurrentHeight = Math.max(120, Math.min(window.innerHeight * 0.85, height));
-            sidebar.style.height = `${sheetCurrentHeight}px`;
-            document.documentElement.style.setProperty('--sheet-height', `${sheetCurrentHeight}px`);
-            
-            const arrow = document.querySelector('.bottom-sheet-arrow');
-            if (sheetCurrentHeight > 450) {
-                sidebar.classList.add('expanded');
-            } else {
-                sidebar.classList.remove('expanded');
-            }
-        }
-
         function toggleMobileSidebar() {
             if (window.innerWidth <= 900) {
-                if (sheetCurrentHeight > 350) {
-                    updateSheetHeight(150); // minimized state
-                } else {
-                    updateSheetHeight(500); // expanded standard state
-                }
+                sidebar.classList.toggle('expanded');
             }
-        }
-
-        function setupMobileDragHandle() {
-            const handle = document.getElementById('sheetHandle');
-            
-            handle.addEventListener('touchstart', (e) => {
-                if (window.innerWidth > 900) return;
-                isDraggingSheet = true;
-                dragStartY = e.touches[0].clientY;
-                sheetStartHeight = sheetCurrentHeight;
-                sidebar.style.transition = 'none'; // absolute raw movement response
-                document.getElementById('controlsOverlay').style.transition = 'none';
-            }, { passive: true });
-
-            window.addEventListener('touchmove', (e) => {
-                if (!isDraggingSheet) return;
-                const deltaY = dragStartY - e.touches[0].clientY;
-                const targetHeight = sheetStartHeight + deltaY;
-                updateSheetHeight(targetHeight);
-            }, { passive: true });
-
-            window.addEventListener('touchend', () => {
-                if (!isDraggingSheet) return;
-                isDraggingSheet = false;
-                sidebar.style.transition = 'height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                document.getElementById('controlsOverlay').style.transition = 'bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                
-                // Magnet snapping functionality
-                if (sheetCurrentHeight > window.innerHeight * 0.6) {
-                    updateSheetHeight(window.innerHeight * 0.8);
-                } else if (sheetCurrentHeight < 220) {
-                    updateSheetHeight(150);
-                } else {
-                    updateSheetHeight(350);
-                }
-            });
         }
 
         function startDrag(e) {
@@ -994,7 +888,6 @@
             
             drawStraightTrackerLine();
             
-            // Zoom out completely when tracking is successfully engaged
             currentZoom = 1;
             panX = 0;
             panY = 0;
@@ -1077,9 +970,7 @@
             document.getElementById('startLocation').value = "";
             userDot.classList.add('hidden');
             
-            if (window.innerWidth <= 900) {
-                updateSheetHeight(320); // resets drag sheet positioning metric parameters
-            }
+            sidebar.classList.remove('expanded');
         }
 
         window.addEventListener('resize', () => {
