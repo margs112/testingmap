@@ -397,7 +397,6 @@
             .map-viewport {
                 flex: none;
                 width: 100%;
-                /* Adjusted to sit higher based on the new sidebar height baseline */
                 height: calc(100vh - 450px); 
                 position: absolute;
                 top: 0;
@@ -431,7 +430,6 @@
                 left: 0;
                 max-width: 100%;
                 min-width: 100%; 
-                /* Increased from 390px to 450px to shift the layout higher up */
                 height: 450px; 
                 flex: none;
                 border-radius: 24px 24px 0 0;
@@ -442,7 +440,6 @@
                 transition: height 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.12);
             }
 
-            /* Fully expanded sheet states */
             .info-sidebar.expanded {
                 height: 85vh;
             }
@@ -480,7 +477,6 @@
             }
 
             .controls-overlay {
-                /* Dynamically balanced position based on new baseline */
                 bottom: 465px;
                 left: 15px;
                 transition: bottom 0.4s ease;
@@ -522,7 +518,7 @@
  
                     <div id="userLocationDot" class="user-live-dot" style="top: 57.2%; left: 37.8%;">
                         <div class="user-avatar-frame">
-                            <img src="https://inviteme.com.au/cdn/shop/files/img_work_products_01_1200x1200.png?v=1744342444" alt="Student Position Indicator">
+                            <img src="https://scontent.fmnl17-8.fna.fbcdn.net/v/t39.30808-6/457164746_1049052310343806_1879955978421656846_n.jpg?stp=dst-jpg_tt6&cstp=mx1080x1080&ctp=s1080x1080&_nc_cat=104&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeFJT7Heysxwklq9R_OJIe2uIzwVI3pjv3sjPBUjemO_e_8espQ-M68JaVCzzXzdsliq_8wcKzG1KbUIF1L5zGeo&_nc_ohc=2PH7eCr69fgQ7kNvwFfDZUh&_nc_oc=Adr_2wfbFRTA7_k0Or1Bxi5K-F6u_wO_Pt3JQiHyDkWgu1cI8WOfShsrsH5J51cyyAg&_nc_zt=23&_nc_ht=scontent.fmnl17-8.fna&_nc_gid=itgGO-rGM6_t7GtwvXMtrQ&_nc_ss=7b2a8&oh=00_Af9L_omrOvKKdsQHOKt3uFURQkuXqG5k21xUDNM5wcXERg&oe=6A2C13AC" alt="Student Position Indicator">
                         </div>
                     </div>
 
@@ -877,7 +873,7 @@
         }
 
         function focusBuilding(key, pctX, pctY, dotElement) {
-            if (activeBuildingKey === key) {
+            if (activeBuildingKey === key && !isTrackingMode) {
                 resetView();
                 return;
             }
@@ -943,6 +939,13 @@
             document.getElementById('directionsCard').classList.remove('hidden');
             
             drawStraightTrackerLine();
+            
+            // Adjust map view back to fit whole campus layout so the path line is clearly visible
+            currentZoom = 1;
+            panX = 0;
+            panY = 0;
+            applyTransform();
+
             resetBtn.innerText = "❌ Clear Route Path";
             resetBtn.className = "reset-btn danger";
             resetBtn.classList.remove('hidden');
