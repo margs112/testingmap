@@ -248,9 +248,12 @@
         .bottom-sheet-handle {
             display: none;
             width: 100%;
-            padding: 10px 0;
-            cursor: pointer;
+            padding: 12px 0 6px 0;
+            cursor: grab;
             text-align: center;
+        }
+        .bottom-sheet-handle:active {
+            cursor: grabbing;
         }
 
         .bottom-sheet-bar {
@@ -363,8 +366,8 @@
         }
         .placeholder-state h3 { color: #2c3e2b; margin-bottom: 8px; }
 
-        .sidebar-content { display: flex; flex-direction: column; }
-        .building-header-image { width: 100%; height: 160px; background-color: #ddd; border-radius: 8px; overflow: hidden; }
+        .sidebar-content { display: flex; flex-direction: column; overflow-y: auto; }
+        .building-header-image { width: 100%; height: 160px; background-color: #ddd; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
         .building-header-image img { width: 100%; height: 100%; object-fit: cover; }
         .details-body { padding: 16px 0; }
 
@@ -393,16 +396,18 @@
         @media (max-width: 900px) {
             .map-interface { 
                 flex-direction: column;
+                position: relative;
+                height: 100vh;
+                width: 100vw;
             }
             .map-viewport {
                 flex: none;
                 width: 100%;
-                height: calc(100vh - 290px); 
+                height: 100% !important; /* Forces layout map frame to take absolute full container height */
                 position: absolute;
                 top: 0;
                 left: 0;
                 z-index: 1;
-                transition: height 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.12);
             }
 
             .map-canvas {
@@ -430,23 +435,19 @@
                 left: 0;
                 max-width: 100%;
                 min-width: 100%; 
-                height: 290px;
+                height: 320px; /* Default starting position lower on screen */
                 flex: none;
                 border-radius: 24px 24px 0 0;
                 box-shadow: 0 -10px 32px rgba(0,0,0,0.25);
                 padding: 0 16px 16px 16px;
                 z-index: 50;
                 background-color: #ffffff;
-                transition: height 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.12);
+                /* Clean performance rendering updates for dragging interactions */
+                transition: height 0.1s ease-out; 
+                touch-action: none; /* Prevents background viewport scrolling bugs */
             }
 
-            .info-sidebar.expanded {
-                height: 82vh;
-            }
-            .info-sidebar.expanded ~ .map-viewport {
-                height: calc(100vh - 82vh);
-            }
-
+            /* State class rotations */
             .info-sidebar.expanded .bottom-sheet-arrow {
                 transform: rotate(180deg);
             }
@@ -475,14 +476,13 @@
                 padding: 10px;
                 font-size: 13px;
             }
+
             .controls-overlay {
-                bottom: 305px;
+                bottom: calc(var(--sheet-height, 320px) + 20px);
                 left: 15px;
-                transition: bottom 0.4s ease;
+                transition: bottom 0.1s ease-out;
             }
-            .info-sidebar.expanded ~ .map-viewport .controls-overlay {
-                bottom: calc(82vh + 15px);
-            }
+
             .reset-btn {
                 padding: 8px 14px;
                 font-size: 12px;
@@ -499,7 +499,7 @@
         
         <div class="map-viewport" id="viewport">
             
-            <div class="controls-overlay">
+            <div class="controls-overlay" id="controlsOverlay">
                 <button class="reset-btn hidden" id="resetBtn" onclick="resetView()">
                     🔍 Zoom Out Entire Map
                 </button>
@@ -516,7 +516,7 @@
  
                     <div id="userLocationDot" class="user-live-dot" style="top: 57.2%; left: 37.8%;">
                         <div class="user-avatar-frame">
-                            <img src="https://scontent.fmnl17-8.fna.fbcdn.net/v/t39.30808-6/457164746_1049052310343806_1879955978421656846_n.jpg?stp=dst-jpg_tt6&cstp=mx1080x1080&ctp=s1080x1080&_nc_cat=104&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeFJT7Heysxwklq9R_OJIe2uIzwVI3pjv3sjPBUjemO_e_8espQ-M68JaVCzzXzdsliq_8wcKzG1KbUIF1L5zGeo&_nc_ohc=2PH7eCr69fgQ7kNvwFfDZUh&_nc_oc=Adr_2wfbFRTA7_k0Or1Bxi5K-F6u_wO_Pt3JQiHyDkWgu1cI8WOfShsrsH5J51cyyAg&_nc_zt=23&_nc_ht=scontent.fmnl17-8.fna&_nc_gid=itgGO-rGM6_t7GtwvXMtrQ&_nc_ss=7b2a8&oh=00_Af9L_omrOvKKdsQHOKt3uFURQkuXqG5k21xUDNM5wcXERg&oe=6A2C13AC" alt="Student Position Indicator">
+                            <img src="https://inviteme.com.au/cdn/shop/files/img_work_products_01_1200x1200.png?v=1744342444" alt="Student Position Indicator">
                         </div>
                     </div>
 
@@ -562,7 +562,7 @@
         </div>
 
         <div class="info-sidebar" id="infoSidebar">
-            <div class="bottom-sheet-handle" onclick="toggleMobileSidebar()">
+            <div class="bottom-sheet-handle" id="sheetHandle">
                 <div class="bottom-sheet-bar"></div>
                 <div class="bottom-sheet-arrow"></div>
             </div>
@@ -595,7 +595,7 @@
 
             <div id="sidebar-placeholder" class="placeholder-state">
                 <h3>click k lg te</h3>
-                <p>pindot ka ng bilog o kaya pili k ng bldg n ppuntahan m </p>
+                <p>pindot ka ng bilog o kaya pili k ng bldg n ppuntahan m</p>
             </div>
 
             <div id="sidebar-content" class="sidebar-content hidden">
@@ -654,7 +654,6 @@
             b29: [81.2, 45.4], b30: [69.8, 48.0], b31: [78.5, 52.8], b32: [81.2, 61.2],
             b33: [83.0, 49.5]
         };
-
         for (const [key, coords] of Object.entries(coordinates)) {
             if (campusDatabase[key]) {
                 campusDatabase[key].pctX = coords[0];
@@ -694,6 +693,7 @@
                 }
             }
             applyTransform();
+            setupMobileDragHandle();
         });
 
         const canvas = document.getElementById('mapCanvas');
@@ -704,6 +704,7 @@
         const userDot = document.getElementById('userLocationDot');
         const destStar = document.getElementById('destinationStar');
         const sidebar = document.getElementById('infoSidebar');
+        
         let userCurrentPos = { pctX: 37.8, pctY: 57.2 };
         let currentEndKey = null;
         let isTrackingMode = false;
@@ -717,6 +718,12 @@
         let initialPinchDistance = 0;
         let initialPinchZoom = 1;
 
+        // Mobile Drag Sheet variables
+        let isDraggingSheet = false;
+        let sheetStartHeight = 320;
+        let sheetCurrentHeight = 320;
+        let dragStartY = 0;
+
         viewport.addEventListener('mousedown', startDrag);
         viewport.addEventListener('mousemove', dragMove);
         window.addEventListener('mouseup', endDrag);
@@ -726,10 +733,63 @@
         window.addEventListener('touchend', endDrag);
         viewport.addEventListener('wheel', mouseWheelZoomHandler, { passive: false });
 
+        function updateSheetHeight(height) {
+            sheetCurrentHeight = Math.max(120, Math.min(window.innerHeight * 0.85, height));
+            sidebar.style.height = `${sheetCurrentHeight}px`;
+            document.documentElement.style.setProperty('--sheet-height', `${sheetCurrentHeight}px`);
+            
+            const arrow = document.querySelector('.bottom-sheet-arrow');
+            if (sheetCurrentHeight > 450) {
+                sidebar.classList.add('expanded');
+            } else {
+                sidebar.classList.remove('expanded');
+            }
+        }
+
         function toggleMobileSidebar() {
             if (window.innerWidth <= 900) {
-                sidebar.classList.toggle('expanded');
+                if (sheetCurrentHeight > 350) {
+                    updateSheetHeight(150); // minimized state
+                } else {
+                    updateSheetHeight(500); // expanded standard state
+                }
             }
+        }
+
+        function setupMobileDragHandle() {
+            const handle = document.getElementById('sheetHandle');
+            
+            handle.addEventListener('touchstart', (e) => {
+                if (window.innerWidth > 900) return;
+                isDraggingSheet = true;
+                dragStartY = e.touches[0].clientY;
+                sheetStartHeight = sheetCurrentHeight;
+                sidebar.style.transition = 'none'; // absolute raw movement response
+                document.getElementById('controlsOverlay').style.transition = 'none';
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (!isDraggingSheet) return;
+                const deltaY = dragStartY - e.touches[0].clientY;
+                const targetHeight = sheetStartHeight + deltaY;
+                updateSheetHeight(targetHeight);
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => {
+                if (!isDraggingSheet) return;
+                isDraggingSheet = false;
+                sidebar.style.transition = 'height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                document.getElementById('controlsOverlay').style.transition = 'bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                
+                // Magnet snapping functionality
+                if (sheetCurrentHeight > window.innerHeight * 0.6) {
+                    updateSheetHeight(window.innerHeight * 0.8);
+                } else if (sheetCurrentHeight < 220) {
+                    updateSheetHeight(150);
+                } else {
+                    updateSheetHeight(350);
+                }
+            });
         }
 
         function startDrag(e) {
@@ -871,7 +931,7 @@
         }
 
         function focusBuilding(key, pctX, pctY, dotElement) {
-            if (activeBuildingKey === key && !isTrackingMode) {
+            if (activeBuildingKey === key) {
                 resetView();
                 return;
             }
@@ -901,10 +961,6 @@
                 resetBtn.innerText = "🔍 Zoom Out Entire Map";
                 resetBtn.className = "reset-btn";
                 resetBtn.classList.remove('hidden');
-            }
-
-            if (window.innerWidth <= 900) {
-                sidebar.classList.remove('expanded');
             }
 
             populateSidebarDetails(data);
@@ -938,6 +994,7 @@
             
             drawStraightTrackerLine();
             
+            // Zoom out completely when tracking is successfully engaged
             currentZoom = 1;
             panX = 0;
             panY = 0;
@@ -1020,7 +1077,9 @@
             document.getElementById('startLocation').value = "";
             userDot.classList.add('hidden');
             
-            sidebar.classList.remove('expanded');
+            if (window.innerWidth <= 900) {
+                updateSheetHeight(320); // resets drag sheet positioning metric parameters
+            }
         }
 
         window.addEventListener('resize', () => {
