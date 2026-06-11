@@ -146,27 +146,27 @@
             border-radius: 50%;
             border: 2.5px solid #ffffff;
             cursor: pointer;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(calc(1 / var(--map-scale, 1)));
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
             transition: transform 0.2s ease, background-color 0.2s;
             z-index: 10;
         }
         .pin-dot:hover {
-            transform: translate(-50%, -50%) scale(1.3);
+            transform: translate(-50%, -50%) scale(calc(1.3 / var(--map-scale, 1)));
         }
         .pin-dot.active {
-            transform: translate(-50%, -50%) scale(1.4);
+            transform: translate(-50%, -50%) scale(calc(1.4 / var(--map-scale, 1)));
             border-color: #ffd700;
-            box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 0 calc(6px / var(--map-scale, 1)) rgba(255, 215, 0, 0.4);
             z-index: 12;
         }
 
-        /* Student location pin wrapper */
         .user-live-dot {
             position: absolute;
             width: 46px;
             height: 46px;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(calc(1 / var(--map-scale, 1)));
+            transform-origin: center center;
             z-index: 35;
             pointer-events: none;
             filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.45));
@@ -205,12 +205,12 @@
             width: 0;
         }
 
-        /* Destination Signum Fidei Star Overlay Pin */
         .destination-star-pin {
             position: absolute;
             width: 75px;
             height: 75px;
-            transform: translate(-50%, -85%);
+            transform-origin: bottom center;
+            transform: translate(-50%, -85%) scale(calc(1 / var(--map-scale, 1)));
             z-index: 36;
             pointer-events: none;
             filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.5));
@@ -224,8 +224,8 @@
         }
 
         @keyframes bouncePin {
-            0%, 100% { transform: translate(-50%, -85%); }
-            50% { transform: translate(-50%, -98%); }
+            0%, 100% { transform: translate(-50%, -85%) scale(calc(1 / var(--map-scale, 1))); }
+            50% { transform: translate(-50%, -98%) scale(calc(1 / var(--map-scale, 1))); }
         }
 
         .blue-dot { background-color: #00A0BE; }
@@ -243,6 +243,32 @@
             overflow-y: auto;
             z-index: 50;
             padding: 24px;
+        }
+
+        .bottom-sheet-handle {
+            display: none;
+            width: 100%;
+            padding: 10px 0;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .bottom-sheet-bar {
+            width: 40px;
+            height: 5px;
+            background-color: #ccc;
+            border-radius: 3px;
+            margin: 0 auto 6px auto;
+        }
+
+        .bottom-sheet-arrow {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 7px solid #888;
+            transition: transform 0.3s ease;
         }
 
         .nav-widget {
@@ -337,8 +363,8 @@
         }
         .placeholder-state h3 { color: #2c3e2b; margin-bottom: 8px; }
 
-        .sidebar-content { display: flex; flex-direction: column; }
-        .building-header-image { width: 100%; height: 160px; background-color: #ddd; border-radius: 8px; overflow: hidden; }
+        .sidebar-content { display: flex; flex-direction: column; overflow-y: auto; }
+        .building-header-image { width: 100%; height: 160px; background-color: #ddd; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
         .building-header-image img { width: 100%; height: 100%; object-fit: cover; }
         .details-body { padding: 16px 0; }
 
@@ -363,24 +389,75 @@
 
         .hidden { display: none !important; }
 
+        /* Mobile Layout Styling Constraints */
         @media (max-width: 900px) {
             .map-interface { 
-                flex-direction: column-reverse; 
+                flex-direction: column;
             }
             .map-viewport {
-                flex: 1; 
-                width: 100%;
-                height: 60vh;
-            }
-            .info-sidebar { 
-                max-width: 100%; 
-                min-width: 100%; 
-                height: 40vh;
                 flex: none;
-                border-radius: 20px 20px 0 0;
-                box-shadow: 0 -8px 24px rgba(0,0,0,0.15);
-                padding: 16px;
+                width: 100%;
+                /* Constrains map window perfectly within the remaining space above the sidebar */
+                height: calc(100vh - 390px); 
+                position: absolute;
+                top: 0;
+                left: 0;
+                z-index: 1;
+                transition: height 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.12);
             }
+
+            .map-canvas {
+                width: 100% !important;
+                height: 100% !important;
+            }
+            .map-wrapper {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .campus-image {
+                width: 100% !important;
+                height: 100% !important;
+                max-width: 100vw !important;
+                max-height: 100% !important;
+                object-fit: contain !important;
+            }
+            
+            .info-sidebar { 
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                max-width: 100%;
+                min-width: 100%; 
+                /* Set perfectly to 390px to frame the map cleanly without horizontal gap bands */
+                height: 390px; 
+                flex: none;
+                border-radius: 24px 24px 0 0;
+                box-shadow: 0 -10px 32px rgba(0,0,0,0.25);
+                padding: 0 16px 16px 16px;
+                z-index: 50;
+                background-color: #ffffff;
+                transition: height 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.12);
+            }
+
+            /* Fully expanded user state overrides */
+            .info-sidebar.expanded {
+                height: 82vh;
+            }
+            .info-sidebar.expanded ~ .map-viewport {
+                height: calc(100vh - 82vh);
+            }
+
+            .info-sidebar.expanded .bottom-sheet-arrow {
+                transform: rotate(180deg);
+            }
+
+            .bottom-sheet-handle {
+                display: block;
+            }
+
             .nav-widget {
                 padding: 12px;
                 margin-bottom: 12px;
@@ -388,6 +465,7 @@
             .nav-widget h4 {
                 font-size: 26px !important;
                 margin-bottom: 8px;
+                text-align: center;
             }
             .nav-field {
                 margin-bottom: 8px;
@@ -400,10 +478,16 @@
                 padding: 10px;
                 font-size: 13px;
             }
+
             .controls-overlay {
-                bottom: 15px;
+                bottom: 405px;
                 left: 15px;
+                transition: bottom 0.4s ease;
             }
+            .info-sidebar.expanded ~ .map-viewport .controls-overlay {
+                bottom: calc(82vh + 15px);
+            }
+
             .reset-btn {
                 padding: 8px 14px;
                 font-size: 12px;
@@ -435,7 +519,7 @@
                         <path id="visualPath" class="route-line" d="" fill="none"/>
                     </svg>
  
-                    <div id="userLocationDot" class="user-live-dot" style="top: 34.0%; left: 49.3%;">
+                    <div id="userLocationDot" class="user-live-dot" style="top: 57.2%; left: 37.8%;">
                         <div class="user-avatar-frame">
                             <img src="https://scontent.fmnl17-8.fna.fbcdn.net/v/t39.30808-6/457164746_1049052310343806_1879955978421656846_n.jpg?stp=dst-jpg_tt6&cstp=mx1080x1080&ctp=s1080x1080&_nc_cat=104&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeFJT7Heysxwklq9R_OJIe2uIzwVI3pjv3sjPBUjemO_e_8espQ-M68JaVCzzXzdsliq_8wcKzG1KbUIF1L5zGeo&_nc_ohc=2PH7eCr69fgQ7kNvwFfDZUh&_nc_oc=Adr_2wfbFRTA7_k0Or1Bxi5K-F6u_wO_Pt3JQiHyDkWgu1cI8WOfShsrsH5J51cyyAg&_nc_zt=23&_nc_ht=scontent.fmnl17-8.fna&_nc_gid=itgGO-rGM6_t7GtwvXMtrQ&_nc_ss=7b2a8&oh=00_Af9L_omrOvKKdsQHOKt3uFURQkuXqG5k21xUDNM5wcXERg&oe=6A2C13AC" alt="Student Position Indicator">
                         </div>
@@ -444,7 +528,7 @@
                     <div id="destinationStar" class="destination-star-pin hidden">
                         <img src="https://static.vecteezy.com/system/resources/thumbnails/073/274/811/small/green-map-pin-location-marker-navigation-symbol-isolated-on-transparent-background-3d-illustration-modern-design-useful-for-travel-direction-and-gps-concepts-png.png" alt="Destination Target Star">
                     </div>
-                    
+  
                     <div id="pin-b1" class="pin-dot blue-dot" style="top: 19.8%; left: 23.4%;" onclick="focusBuilding('b1', 23.4, 19.8, this)"></div>
                     <div id="pin-b2" class="pin-dot blue-dot" style="top: 32.2%; left: 15.5%;" onclick="focusBuilding('b2', 15.5, 32.2, this)"></div>
                     <div id="pin-b3" class="pin-dot blue-dot" style="top: 61.2%; left: 17.5%;" onclick="focusBuilding('b3', 17.5, 61.2, this)"></div>
@@ -482,14 +566,19 @@
             </div>
         </div>
 
-        <div class="info-sidebar">
+        <div class="info-sidebar" id="infoSidebar">
+            <div class="bottom-sheet-handle" onclick="toggleMobileSidebar()">
+                <div class="bottom-sheet-bar"></div>
+                <div class="bottom-sheet-arrow"></div>
+            </div>
+            
             <div class="nav-widget">
-                <h4 style="font-family: 'Visby CF Heavy'; font-size: 35px;">tracker</h4>
+                <h4 style="font-family: 'Visby CF Heavy'; font-size: 35px; cursor: pointer;" onclick="toggleMobileSidebar()">tracker</h4>
                 
                 <div class="nav-field">
                     <label for="startLocation">sn k ngaun</label>
                     <select id="startLocation" onchange="handleStartLocationChange()">
-                        <option value="" disabled selected>loc mo ngaunoption>
+                        <option value="" disabled selected>Pili ka simula mo</option>
                     </select>
                 </div>
 
@@ -505,7 +594,7 @@
             <div id="directionsCard" class="directions-panel hidden">
                 <h5 id="liveDistanceText">Distance: Selecting target...</h5>
                 <ul class="directions-list" style="list-style: none; padding: 0;">
-                    <li style="margin-top: 5px; color: #666; font-size: 11px;">estimate lg to d to strava</li>
+                    <li style="margin-top: 5px; color: #666; font-size: 11px;">Calculated static distance based on map vector points.</li>
                 </ul>
             </div>
 
@@ -523,6 +612,7 @@
                     <h2 id="building-name" class="building-title">Building Name</h2>
                     <div class="section-heading">About</div>
                     <p id="building-about" class="building-about"></p>
+    
                     <div class="section-heading">Departments</div>
                     <ul id="building-departments" class="department-list"></ul>
                 </div>
@@ -587,7 +677,7 @@
             
             if (endSelect && startSelect) {
                 endSelect.innerHTML = '<option value="" disabled selected>ano destination m</option>';
-                startSelect.innerHTML = '<option value="" disabled selected>loc mo</option>';
+                startSelect.innerHTML = '<option value="" disabled selected>Pili ka simula mo</option>';
                 
                 for (let i = 1; i <= 33; i++) {
                     if (i === 15) continue;
@@ -608,6 +698,7 @@
                     }
                 }
             }
+            applyTransform();
         });
 
         const canvas = document.getElementById('mapCanvas');
@@ -617,12 +708,11 @@
         const resetBtn = document.getElementById('resetBtn');
         const userDot = document.getElementById('userLocationDot');
         const destStar = document.getElementById('destinationStar');
-
-        // Updated track coordinates data variable to point accurately at Sentrum (b18) initially
-        let userCurrentPos = { pctX: 49.3, pctY: 34.0 };
+        const sidebar = document.getElementById('infoSidebar');
+        let userCurrentPos = { pctX: 37.8, pctY: 57.2 };
         let currentEndKey = null;
         let isTrackingMode = false;
-        let activeBuildingKey = null; 
+        let activeBuildingKey = null;
         
         let currentZoom = 1;
         let panX = 0;
@@ -640,6 +730,12 @@
         viewport.addEventListener('touchmove', touchMoveHandler, { passive: false });
         window.addEventListener('touchend', endDrag);
         viewport.addEventListener('wheel', mouseWheelZoomHandler, { passive: false });
+
+        function toggleMobileSidebar() {
+            if (window.innerWidth <= 900) {
+                sidebar.classList.toggle('expanded');
+            }
+        }
 
         function startDrag(e) {
             isDragging = true;
@@ -683,7 +779,6 @@
 
         function touchMoveHandler(e) {
             if (e.preventDefault) e.preventDefault();
-
             if (e.touches.length === 1 && isDragging) {
                 panX = e.touches[0].clientX - startX;
                 panY = e.touches[0].clientY - startY;
@@ -699,7 +794,6 @@
                     
                     if (targetZoom < 0.8) targetZoom = 0.8;
                     if (targetZoom > 5) targetZoom = 5;
-
                     const touchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                     const touchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                     zoomToPoint(touchCenterX, touchCenterY, targetZoom);
@@ -711,7 +805,6 @@
             e.preventDefault();
             const zoomIntensity = 0.12;
             let targetZoom = currentZoom + (e.deltaY < 0 ? zoomIntensity : -zoomIntensity);
-            
             if (targetZoom < 0.8) targetZoom = 0.8;
             if (targetZoom > 5) targetZoom = 5;
 
@@ -722,7 +815,6 @@
             const viewportRect = viewport.getBoundingClientRect();
             const mouseX = clientX - viewportRect.left;
             const mouseY = clientY - viewportRect.top;
-
             panX = mouseX - (mouseX - panX) * (targetZoom / currentZoom);
             panY = mouseY - (mouseY - panY) * (targetZoom / currentZoom);
             currentZoom = targetZoom;
@@ -733,6 +825,7 @@
 
         function applyTransform() {
             canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+            document.body.style.setProperty('--map-scale', currentZoom);
         }
 
         function showResetButtonIfNeeded() {
@@ -778,14 +871,7 @@
                     document.getElementById('directionsCard').classList.add('hidden');
                     isTrackingMode = false;
                 }
-                
-                activeBuildingKey = end;
-                document.querySelectorAll('.pin-dot').forEach(p => p.classList.remove('active'));
-                const dotElement = document.getElementById(destinationNode.pinId);
-                if (dotElement) dotElement.classList.add('active');
-
-                populateSidebarDetails(destinationNode);
-                showResetButtonIfNeeded();
+                focusBuilding(end, destinationNode.pctX, destinationNode.pctY, document.getElementById(destinationNode.pinId));
             }
         }
 
@@ -797,7 +883,6 @@
 
             const data = campusDatabase[key];
             if (!data) return;
-
             activeBuildingKey = key;
 
             document.querySelectorAll('.pin-dot').forEach(p => p.classList.remove('active'));
@@ -817,11 +902,15 @@
             panY = (viewportRect.height / 2) - (targetY * currentZoom);
 
             applyTransform();
-            
             if (!isTrackingMode) {
                 resetBtn.innerText = "🔍 Zoom Out Entire Map";
                 resetBtn.className = "reset-btn";
                 resetBtn.classList.remove('hidden');
+            }
+
+            // Kept clean: The sidebar stays exactly in its layout position upon focus.
+            if (window.innerWidth <= 900) {
+                sidebar.classList.remove('expanded');
             }
 
             populateSidebarDetails(data);
@@ -837,7 +926,6 @@
                 return;
             }
             if (!end) return;
-
             currentEndKey = end;
             isTrackingMode = true;
 
@@ -855,7 +943,6 @@
             document.getElementById('directionsCard').classList.remove('hidden');
             
             drawStraightTrackerLine();
-
             resetBtn.innerText = "❌ Clear Route Path";
             resetBtn.className = "reset-btn danger";
             resetBtn.classList.remove('hidden');
@@ -875,10 +962,8 @@
             const y2 = (destNode.pctY / 100) * mapHeight;
 
             visualPath.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
-            
             const distancePercent = Math.sqrt(Math.pow(destNode.pctX - userCurrentPos.pctX, 2) + Math.pow(destNode.pctY - userCurrentPos.pctY, 2));
             const approximateMeters = Math.round(distancePercent * 6.1);
-
             const textEl = document.getElementById('liveDistanceText');
             if (approximateMeters <= 5) {
                 textEl.innerHTML = "<strong>Arrival state reached!</strong> Object targets are aligned.";
@@ -933,12 +1018,9 @@
             document.getElementById('sidebar-content').classList.add('hidden');
             document.getElementById('endLocation').value = ""; 
             document.getElementById('startLocation').value = "";
+            userDot.classList.add('hidden');
             
-            // Keeps icon visible at Sentrum upon reset bounds instead of completely disappearing
-            userCurrentPos = { pctX: 49.3, pctY: 34.0 };
-            userDot.style.left = `${userCurrentPos.pctX}%`;
-            userDot.style.top = `${userCurrentPos.pctY}%`;
-            userDot.classList.remove('hidden');
+            sidebar.classList.remove('expanded');
         }
 
         window.addEventListener('resize', () => {
